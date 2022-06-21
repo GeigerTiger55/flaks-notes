@@ -36,9 +36,32 @@ class User(db.Model):
                 email, 
                 first_name, 
                 last_name):
+        """ Register user - generate password hash and create instance of this
+            class (User)
+        """
         hashed = bcrypt.generate_password_hash(password).decode('utf8')
 
-        return cls(username=username, password=hashed)
+        return cls(
+            username=username, 
+            password=hashed, 
+            email=email, 
+            first_name=first_name, 
+            last_name=last_name,
+            )
+
+    
+    @classmethod
+    def authenticate(cls, username, password):
+        """ Authenticate user credentials
+            - If valid username/password, return user instance
+            - If invalid username/password, return False
+        """
+        user = cls.query.filter_by(username=username).one_or_none()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            return user
+        else:
+            return False
 
 
 
