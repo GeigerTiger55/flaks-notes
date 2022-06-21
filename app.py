@@ -2,9 +2,9 @@
 
 from flask import Flask, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
-from models import User, db, connect_db
+from models import User, db, connect_db, Note
 from flask_bcrypt import Bcrypt
-from forms import RegistrationForm, LoginForm, CSRFProtectForm
+from forms import RegistrationForm, LoginForm, AddNoteForm, CSRFProtectForm
 
 bcrypt = Bcrypt()
 
@@ -27,6 +27,7 @@ def show_homepage():
 
     return redirect('/register')
 
+################ ROUTES FOR USER LOGININ/REGISTRATION ##########################
 
 @app.route('/register', methods=['GET', 'POST'])
 def show_registration_form():
@@ -91,8 +92,17 @@ def show_user_page(username):
         return redirect("/login")
     
     user = User.query.filter_by(username=session[USER_NAME]).one_or_none()
+
+    #Get user's notes
+    notes = Note.query.filter_by(owner=session[USER_NAME]).all()
+
     form = CSRFProtectForm()
-    return render_template("user_info_page.html", user=user, form=form)
+    return render_template(
+        "user_info_page.html", 
+        user=user, 
+        form=form, 
+        notes=notes,
+        )
 
 
 @app.post('/logout')
@@ -105,3 +115,32 @@ def logout_user():
         session.pop(USER_NAME, None)
 
     return redirect('/')
+
+
+################ ROUTES FOR NOTES ##########################
+
+@app.route('/users/<username>/notes/add', methods=['GET', 'POST'])
+def add_note(username):
+    """ Add note for user 
+        - GET: Renders add note form template
+        - POST: saves note data to database, redirects to user info page
+    """
+
+    if 'username' not in session or session[USER_NAME] != username:
+        flash(f"You must login to view that page, you nitwit!")
+        return redirect("/login") 
+
+    form = AddNoteForm()
+
+    if form.validate_on_submit():
+        note = Note(
+            owner=username,
+            title=form.title.data,
+            content=form.content.data,
+        )
+
+        db.session.add(note)
+        db.session.commit()
+        return redirect(f"/users/{username}")
+    else:
+        return render_template("note_add.html", form=form)

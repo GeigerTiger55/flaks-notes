@@ -1,7 +1,7 @@
 from ast import Pass
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, EmailField
-from wtforms.validators import InputRequired
+from wtforms.validators import InputRequired, Email
 
 
 class RegistrationForm(FlaskForm):
@@ -9,7 +9,7 @@ class RegistrationForm(FlaskForm):
 
     username = StringField("Username", validators=[InputRequired()])
     password = PasswordField("Password", validators=[InputRequired()])
-    email = EmailField('Email', validators=[InputRequired()])
+    email = EmailField('Email', validators=[InputRequired(), Email()])
     first_name = StringField("First Name", validators=[InputRequired()])
     last_name = StringField("Last Name", validators=[InputRequired()])
 
@@ -20,6 +20,12 @@ class LoginForm(FlaskForm):
     username = StringField("Username", validators=[InputRequired()])
     password = PasswordField("Password", validators=[InputRequired()])
 
+
+class AddNoteForm(FlaskForm):
+    """form to add note"""
+
+    title = StringField("Note Title", validators=[InputRequired()])
+    content = StringField("Note:", validators=[InputRequired()])
 
 class CSRFProtectForm(FlaskForm):
     """form just for csrf protection"""

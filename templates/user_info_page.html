@@ -13,8 +13,21 @@
  <div>
     <form action="/logout" method="POST"> 
         {{ form.hidden_tag() }}
-        <button type="submit">Log out</button>
+        <button class="btn btn-warning" type="submit">Log out</button>
     </form>
  </div>
+
+ <h2>User's Notes</h2>
+ <ul>
+ {% for note in notes %}
+    <li><b>{{ note.title }}</b> {{ note.content|truncate(80, True) }}</li>
+ {% endfor %}
+ </ul>
+ <div>
+    <a href="/users/{{ user.username }}/notes/add" 
+    class="btn btn-primary" role="button">Add Note</a>
+    <a href="/users/{{ user.username }}/delete" 
+    class="btn btn-danger" role="button">Delete User Account</a>
+</div>
 
 {% endblock %}

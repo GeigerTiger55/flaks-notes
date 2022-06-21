@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
-
+############# USER CLASS #########################################
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -61,6 +61,32 @@ class User(db.Model):
             return user
         else:
             return False
+
+
+############# NOTES CLASS #########################################
+class Note(db.Model):
+    __tablename__ = 'notes'
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+        auto_increment=True,
+    )
+    title = db.Column(
+        db.String(100),
+        nullable=False,
+    )
+    content = db.Column(
+        db.Text,
+        nullable=False,
+    )
+    owner = db.Column(
+        db.String(30),
+        db.ForeignKey('users.username'),
+        nullable=False,
+    )
+
+    user = db.relationship('User', backref='notes')
 
 
 def connect_db(app):
