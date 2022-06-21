@@ -18,6 +18,8 @@ db.create_all()
 
 toolbar = DebugToolbarExtension(app)
 
+USER_NAME = 'username'
+
 
 @app.get('/')
 def show_homepage():
@@ -43,7 +45,7 @@ def show_registration_form():
         )
         db.session.add(user)
         db.session.commit()
-        session['username'] = user.username
+        session[USER_NAME] = user.username
 
         flash(f"User account created with username: {user.username}")
         return redirect(f"/users/{user.username}")
@@ -69,7 +71,7 @@ def show_login_form():
         )
 
         if user:
-            session['username'] = user.username
+            session[USER_NAME] = user.username
             return redirect(f"/users/{user.username}")
         else:
             flash(f"Username and password combo invalid")
@@ -84,13 +86,13 @@ def show_user_page(username):
         and username from url matches session username 
         if not redirect to login page """
 
-    if 'username' not in session or session['username'] != username:
+    if 'username' not in session or session[USER_NAME] != username:
         flash(f"You must login to view that page, you nitwit!")
         return redirect("/login")
-    else:
-        user = User.query.filter_by(username=session['username']).one_or_none()
-        form = CSRFProtectForm()
-        return render_template("user_info_page.html", user=user, form=form)
+    
+    user = User.query.filter_by(username=session[USER_NAME]).one_or_none()
+    form = CSRFProtectForm()
+    return render_template("user_info_page.html", user=user, form=form)
 
 
 @app.post('/logout')
@@ -100,6 +102,6 @@ def logout_user():
     form = CSRFProtectForm()
 
     if form.validate_on_submit():
-        session.pop('username', None)
+        session.pop(USER_NAME, None)
 
     return redirect('/')

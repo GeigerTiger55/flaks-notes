@@ -36,7 +36,7 @@ class User(db.Model):
                  email,
                  first_name,
                  last_name):
-        """ Register user - generate password hash and create instance of this
+        """ Register user - generate password hash and return instance of this
             class (User)
         """
         hashed = bcrypt.generate_password_hash(password).decode('utf8')
