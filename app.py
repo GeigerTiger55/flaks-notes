@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from models import User, db, connect_db
 from flask_bcrypt import Bcrypt
-from forms import RegistrationForm, LoginForm
+from forms import RegistrationForm, LoginForm, CSRFProtectForm
 
 bcrypt = Bcrypt()
 
@@ -25,26 +25,28 @@ def show_homepage():
 
     return redirect('/register')
 
-@app.route('/register', methods=['GET','POST'])
+
+@app.route('/register', methods=['GET', 'POST'])
 def show_registration_form():
-    """shows user registration form """
+    """shows user registration form
+        validates user info and adds user to database """
 
     form = RegistrationForm()
 
     if form.validate_on_submit():
         user = User.register(
-            username = form.username.data,
-            password = form.password.data,
-            email = form.email.data,
-            first_name = form.first_name.data,
-            last_name = form.last_name.data
+            username=form.username.data,
+            password=form.password.data,
+            email=form.email.data,
+            first_name=form.first_name.data,
+            last_name=form.last_name.data
         )
-    
         db.session.add(user)
         db.session.commit()
+        session['username'] = user.username
 
         flash(f"User account created with username: {user.username}")
-        return redirect("/secret")
+        return redirect(f"/users/{user.username}")
     else:
         return render_template("user_register.html", form=form)
 
@@ -54,7 +56,7 @@ def show_login_form():
     """ GET: shows user login form 
             - render user_login.html template
         POST: authenticate user credentials
-            - if valid credentials, redirect to /secret
+            - if valid credentials, redirect to /users/user.username
             - if invalid credentials, redirect to login_page
     """
 
@@ -62,25 +64,42 @@ def show_login_form():
 
     if form.validate_on_submit():
         user = User.authenticate(
-            username = form.username.data,
-            password = form.password.data,
+            username=form.username.data,
+            password=form.password.data,
         )
-    
-        if user: 
+
+        if user:
             session['username'] = user.username
-            return redirect("/secret")
+            return redirect(f"/users/{user.username}")
         else:
             flash(f"Username and password combo invalid")
-            return render_template("user_login.html", form=form)    
+            return render_template("user_login.html", form=form)
     else:
         return render_template("user_login.html", form=form)
 
 
-@app.get('/secret')
-def show_secret_page():
-    """ Show secret page """
-    if 'username' not in session:
+@app.get('/users/<username>')
+def show_user_page(username):
+    """ Show user page if user logged in 
+        and username from url matches session username 
+        if not redirect to login page """
+
+    if 'username' not in session or session['username'] != username:
         flash(f"You must login to view that page, you nitwit!")
         return redirect("/login")
     else:
-        return render_template("secret_page.html")
+        user = User.query.filter_by(username=session['username']).one_or_none()
+        form = CSRFProtectForm()
+        return render_template("user_info_page.html", user=user, form=form)
+
+
+@app.post('/logout')
+def logout_user():
+    """logs user out and redirects to homepage"""
+
+    form = CSRFProtectForm()
+
+    if form.validate_on_submit():
+        session.pop('username', None)
+
+    return redirect('/')
