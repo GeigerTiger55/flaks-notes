@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from models import User, db, connect_db, Note
 from flask_bcrypt import Bcrypt
-from forms import RegistrationForm, LoginForm, AddNoteForm, CSRFProtectForm
+from forms import RegistrationForm, LoginForm, NoteForm, CSRFProtectForm
 
 bcrypt = Bcrypt()
 
@@ -28,6 +28,7 @@ def show_homepage():
     return redirect('/register')
 
 ################ ROUTES FOR USER LOGININ/REGISTRATION ##########################
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def show_registration_form():
@@ -87,22 +88,22 @@ def show_user_page(username):
         and username from url matches session username 
         if not redirect to login page """
 
-    if 'username' not in session or session[USER_NAME] != username:
+    if session.get(USER_NAME) != username:
         flash(f"You must login to view that page, you nitwit!")
         return redirect("/login")
-    
+
     user = User.query.filter_by(username=session[USER_NAME]).one_or_none()
 
-    #Get user's notes
+    # Get user's notes
     notes = Note.query.filter_by(owner=session[USER_NAME]).all()
 
     form = CSRFProtectForm()
     return render_template(
-        "user_info_page.html", 
-        user=user, 
-        form=form, 
+        "user_info_page.html",
+        user=user,
+        form=form,
         notes=notes,
-        )
+    )
 
 
 @app.post('/logout')
@@ -117,6 +118,30 @@ def logout_user():
     return redirect('/')
 
 
+@app.post('/users/<username>/delete')
+def delete_user(username):
+    """Removes user and all user's notes from database and session"""
+
+    form = CSRFProtectForm()
+    # check that user is logged in,
+    # logged in user is same as user being deleted,
+    # request came from our site
+    if session.get(USER_NAME) != username:
+
+        flash(f"You cannot delete a different user, you nitwit!")
+        return redirect("/")
+
+    user = User.query.get_or_404(username)
+
+    session.pop(USER_NAME, None)
+
+    Note.query.filter_by(owner=username).delete()
+    db.session.delete(user)
+    db.session.commit()
+
+    return redirect('/')
+
+
 ################ ROUTES FOR NOTES ##########################
 
 @app.route('/users/<username>/notes/add', methods=['GET', 'POST'])
@@ -126,11 +151,11 @@ def add_note(username):
         - POST: saves note data to database, redirects to user info page
     """
 
-    if 'username' not in session or session[USER_NAME] != username:
+    if session.get(USER_NAME) != username:
         flash(f"You must login to view that page, you nitwit!")
-        return redirect("/login") 
+        return redirect("/login")
 
-    form = AddNoteForm()
+    form = NoteForm()
 
     if form.validate_on_submit():
         note = Note(
@@ -144,3 +169,49 @@ def add_note(username):
         return redirect(f"/users/{username}")
     else:
         return render_template("note_add.html", form=form)
+
+
+@app.route('/notes/<int:note_id>/update', methods=['GET', 'POST'])
+def update_note(note_id):
+    """ displays a form to update a note
+        updates a note and redirects to /users/<username>"""
+    note = Note.query.get_or_404(note_id)
+    form = NoteForm(obj=note)
+
+    username = note.owner
+    if session.get(USER_NAME) != username:
+
+        flash(f"You cannot delete this note, you nitwit!")
+        return redirect("/")
+
+    if form.validate_on_submit():
+
+        note.title = form.title.data,
+        note.content = form.content.data
+
+        db.session.commit()
+
+        flash(f'Updated {note.title}')
+        return redirect(f'/users/{note.owner}')
+
+    else:
+        return render_template('note_update.html', form=form, note=note)
+
+
+@app.post('/notes/<int:note_id>/delete')
+def delete_note(note_id):
+    """removes a note from the database and redirects to
+        to users/<username>"""
+
+    note = Note.query.get_or_404(note_id)
+    username = note.owner
+
+    if session.get(USER_NAME) != username:
+
+        flash(f"You cannot delete this note, you nitwit!")
+        return redirect("/")
+
+    db.session.delete(note)
+    db.session.commit()
+
+    return redirect(f'/users/{username}')
